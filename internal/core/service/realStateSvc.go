@@ -29,14 +29,30 @@ func (s *realStateService) Create(ctx context.Context, realState domain.RealStat
 	return realState, nil
 }
 
-func (s *realStateService) Get(ctx context.Context) (domain.RealState, error) {
-	return domain.RealState{}, nil
+func (s *realStateService) Get(ctx context.Context, id uint64) (domain.RealState, error) {
+	realState, err := s.repository.GetRealState(ctx, id)
+	if err != nil {
+		return domain.RealState{}, err
+	}
+
+	return realState, nil
 }
 
-func (s *realStateService) Update(ctx context.Context) (domain.RealState, error) {
-	return domain.RealState{}, nil
+func (s *realStateService) Update(ctx context.Context, realState domain.RealState, id uint64) (domain.RealState, error) {
+	_, err := s.repository.GetRealState(ctx, id)
+	if err != nil {
+		return domain.RealState{}, err
+	}
+
+	realState, err = s.repository.UpdateRealState(ctx, realState, id)
+
+	if err != nil {
+		return domain.RealState{}, err
+	}
+
+	return realState, nil
 }
 
-func (s *realStateService) Delete(ctx context.Context) error {
-	return nil
+func (s *realStateService) Delete(ctx context.Context, id uint64) error {
+	return s.repository.DeleteRealState(ctx, id)
 }
