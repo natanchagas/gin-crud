@@ -5,10 +5,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/go-playground/assert/v2"
 	"github.com/natanchagas/gin-crud/internal/core/domain"
 	"github.com/natanchagas/gin-crud/internal/core/service"
 	"github.com/natanchagas/gin-crud/internal/mocks"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 

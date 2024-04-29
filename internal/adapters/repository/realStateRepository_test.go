@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/go-playground/assert/v2"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/natanchagas/gin-crud/internal/adapters/repository"
 	"github.com/natanchagas/gin-crud/internal/core/domain"
