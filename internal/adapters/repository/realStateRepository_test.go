@@ -2,6 +2,7 @@ package repository_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 
 	"github.com/natanchagas/gin-crud/internal/adapters/repository"
 	"github.com/natanchagas/gin-crud/internal/core/domain"
+	"github.com/natanchagas/gin-crud/internal/pkg/customerrors"
 )
 
 func TestCreateRealState(t *testing.T) {
@@ -65,7 +67,7 @@ func TestCreateRealState(t *testing.T) {
 
 				return output{
 					id:  -1,
-					err: errors.New("unexpected error"),
+					err: customerrors.Internal,
 				}
 			},
 			assertions: func(t *testing.T, actual, expected output) {
@@ -89,7 +91,7 @@ func TestCreateRealState(t *testing.T) {
 
 				return output{
 					id:  -1,
-					err: errors.New("insert error"),
+					err: customerrors.Internal,
 				}
 			},
 			assertions: func(t *testing.T, actual, expected output) {
@@ -166,11 +168,29 @@ func TestGetRealState(t *testing.T) {
 				mock.
 					ExpectQuery(`SELECT real_state_id, real_state_registration, real_state_address, real_state_size, real_state_price, real_state_state FROM real_states WHERE real_state_id = ?`).
 					WithArgs(id).
-					WillReturnError(errors.New("not found"))
+					WillReturnError(sql.ErrNoRows)
 
 				return output{
 					realState: domain.RealState{},
-					err:       errors.New("not found"),
+					err:       customerrors.NotFound,
+				}
+			},
+			assertions: func(t *testing.T, actual, expected output) {
+				assert.Equal(t, actual, expected)
+			},
+		},
+		{
+			name:  "When real state exists, but something fails should return error",
+			input: 1,
+			mocking: func(mock sqlmock.Sqlmock, id uint64) output {
+				mock.
+					ExpectQuery(`SELECT real_state_id, real_state_registration, real_state_address, real_state_size, real_state_price, real_state_state FROM real_states WHERE real_state_id = ?`).
+					WithArgs(id).
+					WillReturnError(sql.ErrConnDone)
+
+				return output{
+					realState: domain.RealState{},
+					err:       customerrors.Internal,
 				}
 			},
 			assertions: func(t *testing.T, actual, expected output) {
@@ -266,7 +286,7 @@ func TestUpdateRealState(t *testing.T) {
 
 				return output{
 					realState: domain.RealState{},
-					err:       errors.New("update failed"),
+					err:       customerrors.Internal,
 				}
 			},
 			assertions: func(t *testing.T, actual, expected output) {
@@ -327,7 +347,7 @@ func TestDeleteRealState(t *testing.T) {
 					WithArgs(id).
 					WillReturnError(errors.New("delete failed"))
 
-				return errors.New("delete failed")
+				return customerrors.Internal
 			},
 			assertions: func(t *testing.T, actual, expected error) {
 				assert.Equal(t, actual, expected)

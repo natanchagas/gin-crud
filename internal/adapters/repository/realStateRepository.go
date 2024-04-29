@@ -3,8 +3,10 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/natanchagas/gin-crud/internal/core/domain"
+	"github.com/natanchagas/gin-crud/internal/pkg/customerrors"
 )
 
 const (
@@ -27,12 +29,12 @@ func NewRealStateRepository(db *sql.DB) *realStateRepository {
 func (r *realStateRepository) CreateRealState(ctx context.Context, realState domain.RealState) (int64, error) {
 	res, err := r.db.ExecContext(ctx, CreateRealState, realState.Registration, realState.Address, realState.Size, realState.Price, realState.State)
 	if err != nil {
-		return -1, err
+		return -1, customerrors.Internal
 	}
 
 	id, err := res.LastInsertId()
 	if err != nil {
-		return -1, err
+		return -1, customerrors.Internal
 	}
 
 	return id, nil
@@ -43,7 +45,11 @@ func (r *realStateRepository) GetRealState(ctx context.Context, id uint64) (doma
 
 	row := r.db.QueryRowContext(ctx, GetRealState, id)
 	if err := row.Scan(&realState.Id, &realState.Registration, &realState.Address, &realState.Size, &realState.Price, &realState.State); err != nil {
-		return domain.RealState{}, err
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.RealState{}, customerrors.NotFound
+		}
+
+		return domain.RealState{}, customerrors.Internal
 	}
 
 	return realState, nil
@@ -52,7 +58,7 @@ func (r *realStateRepository) GetRealState(ctx context.Context, id uint64) (doma
 func (r *realStateRepository) UpdateRealState(ctx context.Context, realState domain.RealState, id uint64) (domain.RealState, error) {
 	_, err := r.db.ExecContext(ctx, UpdateRealState, realState.Registration, realState.Address, realState.Size, realState.Price, realState.State, id)
 	if err != nil {
-		return domain.RealState{}, err
+		return domain.RealState{}, customerrors.Internal
 	}
 
 	return realState, nil
@@ -61,7 +67,7 @@ func (r *realStateRepository) UpdateRealState(ctx context.Context, realState dom
 func (r *realStateRepository) DeleteRealState(ctx context.Context, id uint64) error {
 	_, err := r.db.ExecContext(ctx, DeleteRealState, id)
 	if err != nil {
-		return err
+		return customerrors.Internal
 	}
 
 	return nil

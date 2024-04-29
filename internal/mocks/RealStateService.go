@@ -42,6 +42,80 @@ func (_m *RealStateService) Create(ctx context.Context, realState domain.RealSta
 	return r0, r1
 }
 
+// Delete provides a mock function with given fields: ctx, id
+func (_m *RealStateService) Delete(ctx context.Context, id uint64) error {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Delete")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uint64) error); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// Get provides a mock function with given fields: ctx, id
+func (_m *RealStateService) Get(ctx context.Context, id uint64) (domain.RealState, error) {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Get")
+	}
+
+	var r0 domain.RealState
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uint64) (domain.RealState, error)); ok {
+		return rf(ctx, id)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uint64) domain.RealState); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Get(0).(domain.RealState)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uint64) error); ok {
+		r1 = rf(ctx, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Update provides a mock function with given fields: ctx, realState, id
+func (_m *RealStateService) Update(ctx context.Context, realState domain.RealState, id uint64) (domain.RealState, error) {
+	ret := _m.Called(ctx, realState, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Update")
+	}
+
+	var r0 domain.RealState
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, domain.RealState, uint64) (domain.RealState, error)); ok {
+		return rf(ctx, realState, id)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, domain.RealState, uint64) domain.RealState); ok {
+		r0 = rf(ctx, realState, id)
+	} else {
+		r0 = ret.Get(0).(domain.RealState)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, domain.RealState, uint64) error); ok {
+		r1 = rf(ctx, realState, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // NewRealStateService creates a new instance of RealStateService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewRealStateService(t interface {
