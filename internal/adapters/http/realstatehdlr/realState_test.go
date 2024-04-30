@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -54,7 +56,7 @@ func TestCreate(t *testing.T) {
 				}
 
 				return output{
-					httpCode: 201,
+					httpCode: http.StatusCreated,
 					body:     string(b),
 				}
 			},
@@ -82,7 +84,7 @@ func TestCreate(t *testing.T) {
 				assert.NoError(t, err)
 
 				return output{
-					httpCode: 500,
+					httpCode: http.StatusInternalServerError,
 					body:     string(b),
 				}
 			},
@@ -109,7 +111,7 @@ func TestCreate(t *testing.T) {
 				assert.NoError(t, err)
 
 				return output{
-					httpCode: 500,
+					httpCode: http.StatusInternalServerError,
 					body:     string(b),
 				}
 			},
@@ -126,7 +128,7 @@ func TestCreate(t *testing.T) {
 				assert.NoError(t, err)
 
 				return output{
-					httpCode: 400,
+					httpCode: http.StatusBadRequest,
 					body:     string(b),
 				}
 			},
@@ -138,7 +140,6 @@ func TestCreate(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			gin.SetMode(gin.TestMode)
 			router := gin.Default()
 
@@ -161,3 +162,166 @@ func TestCreate(t *testing.T) {
 		})
 	}
 }
+
+func TestGet(t *testing.T) {
+	type output struct {
+		httpCode int
+		body     string
+	}
+
+	testCases := []struct {
+		name       string
+		input      string
+		mocking    func(m *mocks.RealStateService, id string) output
+		assertions func(t *testing.T, actual, expected output)
+	}{
+		{
+			name:  "When input is valid and real state exists, should return real state with same id",
+			input: "1",
+			mocking: func(m *mocks.RealStateService, id string) output {
+				rid, err := strconv.ParseUint(id, 10, 64)
+				assert.NoError(t, err)
+
+				realState := domain.RealState{
+					Id:           rid,
+					Registration: 987654321,
+					Address:      "456 Elm St",
+					Size:         200,
+					Price:        250000.50,
+					State:        "CA",
+				}
+
+				m.
+					On("Get", mock.AnythingOfType("context.backgroundCtx"), rid).
+					Return(realState, nil)
+
+				b, err := json.Marshal(realState)
+				assert.NoError(t, err)
+
+				return output{
+					httpCode: http.StatusOK,
+					body:     string(b),
+				}
+			},
+			assertions: func(t *testing.T, actual, expected output) {
+				assert.Equal(t, expected, actual)
+			},
+		},
+		{
+			name:  "When input is invalid, should return 400",
+			input: "a",
+			mocking: func(m *mocks.RealStateService, id string) output {
+				_, err := strconv.ParseUint(id, 10, 64)
+				assert.Error(t, err)
+
+				b, err := json.Marshal(customerrors.BadRequest)
+				assert.NoError(t, err)
+
+				return output{
+					httpCode: http.StatusBadRequest,
+					body:     string(b),
+				}
+			},
+			assertions: func(t *testing.T, actual, expected output) {
+				assert.Equal(t, expected, actual)
+			},
+		},
+		{
+			name:  "When input is valid and real state does not exists, should return 404",
+			input: "1",
+			mocking: func(m *mocks.RealStateService, id string) output {
+				rid, err := strconv.ParseUint(id, 10, 64)
+				assert.NoError(t, err)
+
+				m.
+					On("Get", mock.AnythingOfType("context.backgroundCtx"), rid).
+					Return(domain.RealState{}, customerrors.NotFound)
+
+				b, err := json.Marshal(customerrors.NotFound)
+				assert.NoError(t, err)
+
+				return output{
+					httpCode: http.StatusNotFound,
+					body:     string(b),
+				}
+			},
+			assertions: func(t *testing.T, actual, expected output) {
+				assert.Equal(t, expected, actual)
+			},
+		},
+		{
+			name:  "When input is valid and real state exists, but something goes wrong, should return 500",
+			input: "1",
+			mocking: func(m *mocks.RealStateService, id string) output {
+				rid, err := strconv.ParseUint(id, 10, 64)
+				assert.NoError(t, err)
+
+				m.
+					On("Get", mock.AnythingOfType("context.backgroundCtx"), rid).
+					Return(domain.RealState{}, customerrors.Internal)
+
+				b, err := json.Marshal(customerrors.Internal)
+				assert.NoError(t, err)
+
+				return output{
+					httpCode: http.StatusInternalServerError,
+					body:     string(b),
+				}
+			},
+			assertions: func(t *testing.T, actual, expected output) {
+				assert.Equal(t, expected, actual)
+			},
+		},
+		{
+			name:  "When input is valid and real state exists, but something unexpected goes wrong, should return 500",
+			input: "1",
+			mocking: func(m *mocks.RealStateService, id string) output {
+				rid, err := strconv.ParseUint(id, 10, 64)
+				assert.NoError(t, err)
+
+				m.
+					On("Get", mock.AnythingOfType("context.backgroundCtx"), rid).
+					Return(domain.RealState{}, fmt.Errorf("unexpected error"))
+
+				b, err := json.Marshal(customerrors.Unexpected)
+				assert.NoError(t, err)
+
+				return output{
+					httpCode: http.StatusInternalServerError,
+					body:     string(b),
+				}
+			},
+			assertions: func(t *testing.T, actual, expected output) {
+				assert.Equal(t, expected, actual)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			gin.SetMode(gin.TestMode)
+			router := gin.Default()
+
+			s := mocks.NewRealStateService(t)
+
+			expected := tc.mocking(s, tc.input)
+
+			hdlr := realstatehdlr.NewRealStateHandler(s)
+			hdlr.BuildRoutes(router)
+
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("GET", fmt.Sprintf("/realstate/%s", tc.input), nil)
+			router.ServeHTTP(w, req)
+
+			var actual output
+			actual.httpCode = w.Code
+			actual.body = w.Body.String()
+
+			tc.assertions(t, actual, expected)
+		})
+	}
+}
+
+func TestUpdate(t *testing.T) {}
+
+func TestDelete(t *testing.T) {}
