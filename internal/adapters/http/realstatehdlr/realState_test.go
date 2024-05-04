@@ -322,6 +322,103 @@ func TestGet(t *testing.T) {
 	}
 }
 
-func TestUpdate(t *testing.T) {}
+func TestUpdate(t *testing.T) {
+	type output struct {
+		httpCode int
+		body     string
+	}
+
+	type input struct {
+		body string
+		id   string
+	}
+
+	testCases := []struct {
+		name       string
+		input      input
+		mocking    func(m *mocks.RealStateService, in input) output
+		assertions func(t *testing.T, actual, expected output)
+	}{
+		{
+			name: "When input is valid and real state exists, should return real state updated with same id",
+			input: input{
+				body: `{"registration": 987654321,"address": "456 Elm St","size": 200,"price": 275000.00,"state": "CA"}`,
+				id:   "1",
+			},
+			mocking: func(m *mocks.RealStateService, in input) output {
+				id, err := strconv.ParseUint(in.id, 10, 64)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				var realState domain.RealState
+
+				err = json.Unmarshal([]byte(in.body), &realState)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				rs := realState
+				rs.Id = id
+
+				m.
+					On("Update", mock.AnythingOfType("context.backgroundCtx"), realState, id).
+					Return(rs, nil)
+
+				b, err := json.Marshal(rs)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				return output{
+					httpCode: http.StatusOK,
+					body:     string(b),
+				}
+			},
+			assertions: func(t *testing.T, actual, expected output) {
+				assert.Equal(t, expected, actual)
+			},
+		},
+		{
+			name: "When input is invalid, should return 400",
+		},
+		{
+			name: "When input is valid and real state does not exists, should return 404",
+		},
+		{
+			name: "When input is valid and real state exists, but something goes wrong, should return 500",
+		},
+		{
+			name: "When input is valid and real state exists, but something unexpected goes wrong, should return 500",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			gin.SetMode(gin.DebugMode)
+			router := gin.Default()
+
+			s := mocks.NewRealStateService(t)
+
+			expected := tc.mocking(s, tc.input)
+
+			m := mocks.NewRealStateService(t)
+			hdl := realstatehdlr.NewRealStateHandler(m)
+
+			hdl.BuildRoutes(router)
+
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("PUT", "/realstate/1", nil)
+			router.ServeHTTP(w, req)
+
+			var actual output
+			actual.httpCode = w.Code
+			actual.body = w.Body.String()
+
+			tc.assertions(t, actual, expected)
+
+		})
+	}
+}
 
 func TestDelete(t *testing.T) {}
