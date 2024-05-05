@@ -539,9 +539,143 @@ func TestUpdate(t *testing.T) {
 			actual.body = w.Body.String()
 
 			tc.assertions(t, actual, expected)
-
 		})
 	}
 }
 
-func TestDelete(t *testing.T) {}
+func TestDelete(t *testing.T) {
+	type output struct {
+		httpCode int
+		body     string
+	}
+
+	testCases := []struct {
+		name       string
+		input      string
+		mocking    func(m *mocks.RealStateService, input string) output
+		assertions func(t *testing.T, actual, expected output)
+	}{
+		{
+			name:  "when input is valid and real state exists, should return 204",
+			input: "1",
+			mocking: func(m *mocks.RealStateService, input string) output {
+				id, err := strconv.ParseUint(input, 10, 64)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				m.
+					On("Delete", mock.AnythingOfType("context.backgroundCtx"), id).
+					Return(nil)
+
+				return output{
+					httpCode: http.StatusNoContent,
+					body:     "",
+				}
+			},
+			assertions: func(t *testing.T, actual, expected output) {
+				assert.Equal(t, expected, actual)
+			},
+		},
+		{
+			name:  "when input is invalid, should return 400",
+			input: "a",
+			mocking: func(m *mocks.RealStateService, input string) output {
+				_, err := strconv.ParseUint(input, 10, 64)
+				assert.Error(t, err)
+
+				b, err := json.Marshal(customerrors.BadRequest)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				return output{
+					httpCode: http.StatusBadRequest,
+					body:     string(b),
+				}
+			},
+			assertions: func(t *testing.T, actual, expected output) {
+				assert.Equal(t, expected, actual)
+			},
+		},
+		{
+			name:  "when input is valid and real state exists, but something goes wrong, should return 500",
+			input: "1",
+			mocking: func(m *mocks.RealStateService, input string) output {
+				id, err := strconv.ParseUint(input, 10, 64)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				m.
+					On("Delete", mock.AnythingOfType("context.backgroundCtx"), id).
+					Return(customerrors.Internal)
+
+				b, err := json.Marshal(customerrors.Internal)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				return output{
+					httpCode: http.StatusInternalServerError,
+					body:     string(b),
+				}
+			},
+			assertions: func(t *testing.T, actual, expected output) {
+				assert.Equal(t, expected, actual)
+			},
+		},
+		{
+			name:  "when input is valid and real state exists, but something goes unexpected wrong, should return 500",
+			input: "1",
+			mocking: func(m *mocks.RealStateService, input string) output {
+				id, err := strconv.ParseUint(input, 10, 64)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				m.
+					On("Delete", mock.AnythingOfType("context.backgroundCtx"), id).
+					Return(fmt.Errorf("unexpected error"))
+
+				b, err := json.Marshal(customerrors.Unexpected)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				return output{
+					httpCode: http.StatusInternalServerError,
+					body:     string(b),
+				}
+			},
+			assertions: func(t *testing.T, actual, expected output) {
+				assert.Equal(t, expected, actual)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			gin.SetMode(gin.DebugMode)
+			router := gin.Default()
+
+			s := mocks.NewRealStateService(t)
+			expected := tc.mocking(s, tc.input)
+
+			hdl := realstatehdlr.NewRealStateHandler(s)
+
+			hdl.BuildRoutes(router)
+
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("DELETE", fmt.Sprintf("/realstate/%s", tc.input), nil)
+			router.ServeHTTP(w, req)
+
+			var actual output
+			actual.httpCode = w.Code
+			actual.body = w.Body.String()
+
+			tc.assertions(t, actual, expected)
+		})
+	}
+
+}
