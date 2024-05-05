@@ -381,15 +381,140 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "When input is invalid, should return 400",
+			input: input{
+				body: `{"invalid"}`,
+				id:   "1",
+			},
+			mocking: func(m *mocks.RealStateService, in input) output {
+				_, err := strconv.ParseUint(in.id, 10, 64)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				b, err := json.Marshal(customerrors.BadRequest)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				return output{
+					httpCode: http.StatusBadRequest,
+					body:     string(b),
+				}
+			},
+			assertions: func(t *testing.T, actual, expected output) {
+				assert.Equal(t, expected, actual)
+			},
 		},
 		{
 			name: "When input is valid and real state does not exists, should return 404",
+			input: input{
+				body: `{"registration": 987654321,"address": "456 Elm St","size": 200,"price": 275000.00,"state": "CA"}`,
+				id:   "1",
+			},
+			mocking: func(m *mocks.RealStateService, in input) output {
+				id, err := strconv.ParseUint(in.id, 10, 64)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				var realState domain.RealState
+
+				err = json.Unmarshal([]byte(in.body), &realState)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				m.
+					On("Update", mock.AnythingOfType("context.backgroundCtx"), realState, id).
+					Return(domain.RealState{}, customerrors.NotFound)
+
+				b, err := json.Marshal(customerrors.NotFound)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				return output{
+					httpCode: http.StatusNotFound,
+					body:     string(b),
+				}
+			},
+			assertions: func(t *testing.T, actual, expected output) {
+				assert.Equal(t, expected, actual)
+			},
 		},
 		{
 			name: "When input is valid and real state exists, but something goes wrong, should return 500",
+			input: input{
+				body: `{"registration": 987654321,"address": "456 Elm St","size": 200,"price": 275000.00,"state": "CA"}`,
+				id:   "1",
+			},
+			mocking: func(m *mocks.RealStateService, in input) output {
+				id, err := strconv.ParseUint(in.id, 10, 64)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				var realState domain.RealState
+
+				err = json.Unmarshal([]byte(in.body), &realState)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				m.
+					On("Update", mock.AnythingOfType("context.backgroundCtx"), realState, id).
+					Return(domain.RealState{}, customerrors.Internal)
+
+				b, err := json.Marshal(customerrors.Internal)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				return output{
+					httpCode: http.StatusInternalServerError,
+					body:     string(b),
+				}
+			},
+			assertions: func(t *testing.T, actual, expected output) {
+				assert.Equal(t, expected, actual)
+			},
 		},
 		{
 			name: "When input is valid and real state exists, but something unexpected goes wrong, should return 500",
+			input: input{
+				body: `{"registration": 987654321,"address": "456 Elm St","size": 200,"price": 275000.00,"state": "CA"}`,
+				id:   "1",
+			},
+			mocking: func(m *mocks.RealStateService, in input) output {
+				id, err := strconv.ParseUint(in.id, 10, 64)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				var realState domain.RealState
+
+				err = json.Unmarshal([]byte(in.body), &realState)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				m.
+					On("Update", mock.AnythingOfType("context.backgroundCtx"), realState, id).
+					Return(domain.RealState{}, customerrors.Unexpected)
+
+				b, err := json.Marshal(customerrors.Unexpected)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				return output{
+					httpCode: http.StatusInternalServerError,
+					body:     string(b),
+				}
+			},
+			assertions: func(t *testing.T, actual, expected output) {
+				assert.Equal(t, expected, actual)
+			},
 		},
 	}
 
@@ -399,16 +524,14 @@ func TestUpdate(t *testing.T) {
 			router := gin.Default()
 
 			s := mocks.NewRealStateService(t)
-
 			expected := tc.mocking(s, tc.input)
 
-			m := mocks.NewRealStateService(t)
-			hdl := realstatehdlr.NewRealStateHandler(m)
+			hdl := realstatehdlr.NewRealStateHandler(s)
 
 			hdl.BuildRoutes(router)
 
 			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("PUT", "/realstate/1", nil)
+			req, _ := http.NewRequest("PUT", fmt.Sprintf("/realstate/%s", tc.input.id), bytes.NewBuffer([]byte(tc.input.body)))
 			router.ServeHTTP(w, req)
 
 			var actual output
