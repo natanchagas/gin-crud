@@ -1,0 +1,299 @@
+openapi: 3.0.3
+info:
+  title: Real State API
+  description: |-
+    This is a Real State API implementing CRUD endpoints using Golang with [Gin Framework](https://gin-gonic.com/). This has no expectation of representing a real life implementation, just a simple API to experiment with the framework and testing.
+    
+    [Swagger](https://swagger.io) is used to document the API - based on OpenAPI Standard.
+  contact:
+    url: https://github.com/natanchagas/gin-crud/issues
+  license:
+    name: Public Domain
+    url: https://creativecommons.org/publicdomain/zero/1.0/deed.en
+  version: 1.0.0
+externalDocs:
+  description: Find out more about Swagger
+  url: http://swagger.io
+servers:
+  - url: https://realstate.natanchagas.com/api/
+tags:
+  - name: real state
+    description: Create, Read, Update and Delete operations for Real States
+paths:
+  /realstate:
+    post:
+      tags:
+        - real state
+      summary: Add a real state
+      description: Add a new real state
+      operationId: addRealState
+      requestBody:
+        description: Add a new real state
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RealStateIdless'
+        required: true
+      responses:
+        '201':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RealState'
+        '400':
+          description: Invalid input
+        '500':
+          description: Validation exception
+  /realstate/{realStateId}:
+    get:
+      tags:
+        - real state
+      summary: Find real state by ID
+      description: Returns a single real state
+      operationId: getRealStateById
+      parameters:
+        - name: realStateId
+          in: path
+          description: ID of real state to return
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RealState'
+        '400':
+          description: Invalid ID supplied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+        '500':
+          description: Application error
+          content:
+            application/json:
+              schema:
+                oneOf:
+                 - $ref: '#/components/schemas/InternalServerError'
+                 - $ref: '#/components/schemas/UnexpectedError'
+    put:
+      tags:
+        - real state
+      summary: Updates a real state
+      description: 'Updates a real state'
+      operationId: updateRealState
+      requestBody:
+        description: Add a new real state
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RealStateIdless'
+        required: true
+      parameters:
+        - name: realStateId
+          in: path
+          description: ID of real state that needs to be updated
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RealState'
+        '400':
+          description: Invalid ID supplied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+        '500':
+          description: Application error
+          content:
+            application/json:
+              schema:
+                oneOf:
+                 - $ref: '#/components/schemas/InternalServerError'
+                 - $ref: '#/components/schemas/UnexpectedError'
+    delete:
+      tags:
+        - real state
+      summary: Deletes a real state
+      description: delete a real state
+      operationId: deleteRealState
+      parameters:
+        - name: realStateId
+          in: path
+          description: Real state id to delete
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Successful
+        '400':
+          description: Invalid ID supplied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestError'
+        '500':
+          description: Application error
+          content:
+            application/json:
+              schema:
+                oneOf:
+                 - $ref: '#/components/schemas/InternalServerError'
+                 - $ref: '#/components/schemas/UnexpectedError'
+components:
+  schemas:
+    RealState:
+      required:
+        - registration
+        - address
+        - size
+        - price
+        - state
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 10
+        registration:
+          type: integer
+          format: int64
+          example: 987654321
+        address:
+          type: string
+          description: real state address
+          example: '456 Elm St'
+        size:
+          type: integer
+          format: int64
+          example: 200
+        price:
+          type: number
+          format: double
+          example: 27500.50
+        state:
+          type: string
+          description: real state state
+          example: 'CA'
+    RealStateIdless:
+      required:
+        - registration
+        - address
+        - size
+        - price
+        - state
+      type: object
+      properties:
+        registration:
+          type: integer
+          format: int64
+          example: 987654321
+        address:
+          type: string
+          description: real state address
+          example: '456 Elm St'
+        size:
+          type: integer
+          format: int64
+          example: 200
+        price:
+          type: number
+          format: double
+          example: 27500.50
+        state:
+          type: string
+          description: real state state
+          example: 'CA'
+    BadRequestError:
+      type: object
+      properties:
+        statuscode:
+          type: integer
+          format: int64
+          example: 400
+        errorcode:
+          type: string
+          description: error code
+          example: 'BAD_REQUEST'
+        message:
+          type: string
+          description: description of the error
+          example: 'something is wrong within your request'
+    NotFoundError:
+      type: object
+      properties:
+        statuscode:
+          type: integer
+          format: int64
+          example: 404
+        errorcode:
+          type: string
+          description: error code
+          example: 'RESOURCE_NOT_FOUND'
+        message:
+          type: string
+          description: description of the error
+          example: 'resource not found'
+    InternalServerError:
+      type: object
+      properties:
+        statuscode:
+          type: integer
+          format: int64
+          example: 500
+        errorcode:
+          type: string
+          description: error code
+          example: 'APPLICATION_ERROR'
+        message:
+          type: string
+          description: description of the error
+          example: 'application internal error'
+    UnexpectedError:
+      type: object
+      properties:
+        statuscode:
+          type: integer
+          format: int64
+          example: 500
+        errorcode:
+          type: string
+          description: error code
+          example: 'UNEXPECTED_ERROR'
+        message:
+          type: string
+          description: description of the error
+          example: 'unexpected error'
+  requestBodies:
+    RealState:
+      description: Real state object that needs to be added
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RealState'
